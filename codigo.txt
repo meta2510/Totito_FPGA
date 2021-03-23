@@ -1,0 +1,168 @@
+----------------------------------------------------------------------------------
+-- Company: 
+-- Engineer: 
+-- 
+-- Create Date:    12:01:09 02/17/2021 
+-- Design Name: 
+-- Module Name:    teclado - Behavioral 
+-- Project Name: 
+-- Target Devices: 
+-- Tool versions: 
+-- Description: 
+--
+-- Dependencies: 
+--
+-- Revision: 
+-- Revision 0.01 - File Created
+-- Additional Comments: 
+--
+----------------------------------------------------------------------------------
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+--use ieee.std_logic_arith.all;
+use ieee.std_logic_unsigned.all;
+use ieee.numeric_std.all;
+
+
+entity teclado is
+    Port ( 
+			  conta_tecla: inout std_logic_vector(3 downto 0);
+			  CLK : in  STD_LOGIC;
+           COLUMNAS : in  STD_LOGIC_VECTOR (3 downto 0);
+           FILAS : out  STD_LOGIC_VECTOR (3 downto 0);
+           P1_OUT : out  STD_LOGIC_VECTOR (9 downto 1);
+			  P2_OUT : out  STD_LOGIC_VECTOR (9 downto 1);
+			  reset : in std_logic;
+			  inicio : in std_logic;
+           DISPLAY : out  STD_LOGIC_VECTOR (6 downto 0));
+			  
+end teclado;
+
+architecture Behavioral of teclado is
+
+component  LIB_TEC_MATRICIAL_4X4_INTESC_REVA is
+generic( FREQ_CLK : integer := 12_000_000
+        );
+port( CLK        : in  std_logic;
+      COLUMNAS   : in  std_logic_vector(3 downto 0);
+      FILAS      : out std_logic_vector(3 downto 0);
+      BOTON_PRES : out std_logic_vector(3 downto 0);
+      IND        : out std_logic
+     );
+end component LIB_TEC_MATRICIAL_4X4_INTESC_REVA;
+
+signal boton_pres : std_logic_vector(3 downto 0) := (others => '0');
+signal ind        : std_logic := '0';
+signal jugador1  : std_logic_vector(9 downto 1) := (others => '0');
+signal jugador2  : std_logic_vector(9 downto 1) := (others => '0');
+signal boton1  : std_logic_vector(9 downto 1) := (others => '0');
+signal turno  : std_logic_vector(9 downto 1) := (others => '0');
+signal p  : std_logic;
+signal start : std_logic;
+
+begin
+
+P1_OUT <= jugador1;
+P2_OUT <= jugador2;
+
+u1 : LIB_TEC_MATRICIAL_4X4_INTESC_REVA
+generic map( FREQ_CLK => 12_000_000
+           )
+port map( CLK        => CLK, 
+          COLUMNAS   => COLUMNAS, 
+          FILAS      => FILAS, 
+          BOTON_PRES => boton_pres,
+          IND        => ind
+			);
+			
+contador: process(CLK)
+begin
+if rising_edge(CLK) then
+   if ind = '1' and boton_pres = x"7" then
+      conta_tecla <= conta_tecla + 1;
+      if conta_tecla = "1001" then
+         conta_tecla <= "0000";
+      end if;
+   end if;
+end if;
+end process contador;
+	
+PROCESS(CLK,boton1,start)
+BEGIN
+	IF RISING_EDGE(CLK) THEN
+	if start = '1' then
+		IF 		boton_pres= x"1" and ind = '1' THEN boton1(1) <= '1';
+		ELSIF 	boton_pres= x"2" and ind = '1' THEN boton1(2) <= '1';
+		ELSIF 	boton_pres= x"3" and ind = '1' THEN boton1(3) <= '1';
+		ELSIF 	boton_pres= x"4" and ind = '1' THEN boton1(4) <= '1';
+		ELSIF 	boton_pres= x"5" and ind = '1' THEN boton1(5) <= '1';
+		ELSIF 	boton_pres= x"6" and ind = '1' THEN boton1(6) <= '1';
+		ELSIF 	boton_pres= x"7" and ind = '1' THEN boton1(7) <= '1';
+		ELSIF 	boton_pres= x"8" and ind = '1' THEN boton1(8) <= '1';
+		ELSIF 	boton_pres= x"9" and ind = '1' THEN boton1(9) <= '1';
+		ELSE  boton1 <= "000000000";
+		END IF;
+	else  boton1 <= "000000000";	
+	end if;	
+	END IF;
+END PROCESS;
+
+
+matriz_leds: process(CLK)
+begin
+if rising_edge(CLK) then
+
+	if inicio = '0' then
+		start <= '1';
+	end if;	
+ 
+	for i in 1 to 9 loop
+			if reset = '0' then
+				jugador1(i) <= '0';
+				jugador2(i) <= '0';
+				turno(i) <= '0';
+				start <= '0';
+			elsif boton1(i) = '1' then
+				turno(i) <= '1';
+				 if (p = '0') then
+                    jugador1(i) <= '1';
+                else
+                    jugador2(i) <= '1';
+             end if;
+			end if;
+	end loop;
+end if;
+end process matriz_leds;
+
+process(turno) --selector de turnos
+        variable ot : std_logic;
+    begin
+        ot := '0';
+        for i in 1 to 9 loop
+            ot := ot xor turno(i);
+        end loop;
+        p <= ot;
+end process;
+
+
+process (conta_tecla) begin
+
+case conta_tecla is
+	when "0000" => DISPLAY <= "1000000";
+	when "0001" => DISPLAY <= "1111001";
+	when "0010" => DISPLAY <= "0100100";
+	when "0011" => DISPLAY <= "0110000";
+	when "0100" => DISPLAY <= "0011001";
+	when "0101" => DISPLAY <= "0010010";
+	when "0110" => DISPLAY <= "0000010";
+	when "0111" => DISPLAY <= "1111000";
+	when "1000" => DISPLAY <= "0000000";
+	when "1001" => DISPLAY <= "0010000";
+	when others => DISPLAY <= "1000000";
+end case;
+end process;	
+
+
+
+end Behavioral;
+
