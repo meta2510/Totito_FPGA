@@ -26,7 +26,7 @@ use ieee.numeric_std.all;
 
 entity teclado is
     Port ( 
-			  conta_tecla: inout std_logic_vector(3 downto 0);
+			  
 			  CLK : in  STD_LOGIC;
            COLUMNAS : in  STD_LOGIC_VECTOR (3 downto 0);
            FILAS : out  STD_LOGIC_VECTOR (3 downto 0);
@@ -34,6 +34,10 @@ entity teclado is
 			  P2_OUT : out  STD_LOGIC_VECTOR (9 downto 1);
 			  reset : in std_logic;
 			  inicio : in std_logic;
+			  Enable2 : out std_logic;
+			  Enable1 : out std_logic;
+			  Enable0 : out std_logic;
+			  LED1,LED2 : out std_logic;
            DISPLAY : out  STD_LOGIC_VECTOR (6 downto 0));
 			  
 end teclado;
@@ -59,11 +63,30 @@ signal boton1  : std_logic_vector(9 downto 1) := (others => '0');
 signal turno  : std_logic_vector(9 downto 1) := (others => '0');
 signal p  : std_logic;
 signal start : std_logic;
+signal cambio : std_logic;
+signal ganador  : std_logic;
+signal ganador1 : std_logic;
+signal ganador2 : std_logic; 
+signal led_p1 : std_logic:= '0';
+signal led_p2 : std_logic:= '0';
+
+constant c_CNT_1HZ   : natural := 6000000;
+signal r_CNT_1HZ   : natural range 0 to c_CNT_1HZ;
+signal r_TOGGLE_1HZ   : std_logic := '0';
+signal w_LED_SELECT : std_logic;
 
 begin
 
 P1_OUT <= jugador1;
 P2_OUT <= jugador2;
+LED1 <= led_p1;
+LED2 <= led_p2;
+Enable0 <= '0';
+Enable1 <= '1';
+Enable2 <= '1';
+ganador <= ganador1 or ganador2;
+
+
 
 u1 : LIB_TEC_MATRICIAL_4X4_INTESC_REVA
 generic map( FREQ_CLK => 12_000_000
@@ -75,17 +98,17 @@ port map( CLK        => CLK,
           IND        => ind
 			);
 			
-contador: process(CLK)
-begin
-if rising_edge(CLK) then
-   if ind = '1' and boton_pres = x"7" then
-      conta_tecla <= conta_tecla + 1;
-      if conta_tecla = "1001" then
-         conta_tecla <= "0000";
-      end if;
-   end if;
-end if;
-end process contador;
+--contador: process(CLK)
+--begin
+--if rising_edge(CLK) then
+--   if ind = '1' and boton_pres = x"0" then
+--      conta_tecla <= conta_tecla + 1;
+--      if conta_tecla = "1001" then
+--         conta_tecla <= "0000";
+--      end if;
+--   end if;
+--end if;
+--end process contador;
 	
 PROCESS(CLK,boton1,start)
 BEGIN
@@ -108,13 +131,13 @@ BEGIN
 END PROCESS;
 
 
-matriz_leds: process(CLK)
+matriz_leds: process(CLK,cambio)
 begin
 if rising_edge(CLK) then
 
 	if inicio = '0' then
 		start <= '1';
-	end if;	
+	end if;
  
 	for i in 1 to 9 loop
 			if reset = '0' then
@@ -122,15 +145,53 @@ if rising_edge(CLK) then
 				jugador2(i) <= '0';
 				turno(i) <= '0';
 				start <= '0';
-			elsif boton1(i) = '1' then
+				cambio <= '1';
+			elsif boton1(i) = '1' and ganador = '0' then
 				turno(i) <= '1';
 				 if (p = '0') then
                     jugador1(i) <= '1';
+						  cambio <= '0';
                 else
                     jugador2(i) <= '1';
+						  cambio <= '1';
              end if;
 			end if;
 	end loop;
+	
+if cambio = '1' then
+		DISPLAY <= "1111001";
+	end if;
+	
+if cambio = '0' then
+		DISPLAY <= "0100100";
+	end if;		
+
+if ganador1 = '1' then
+		for i in 1 to 9 loop
+		if jugador1(i) = '0' then
+		jugador1(i) <= w_LED_SELECT and ganador1;
+		jugador2(i) <= '0';
+		end if;
+		end loop;
+		led_p1 <= w_LED_SELECT and ganador1;
+		--jugador1(1) <= w_LED_SELECT;
+		else
+		led_p1 <= '0';
+end if;
+	
+if ganador2 = '1' then
+		for i in 1 to 9 loop
+		if jugador2(i) = '0' then
+		jugador2(i) <= w_LED_SELECT and ganador2;
+		jugador1(i) <= '0';
+		end if;
+		end loop;
+		led_p2 <= w_LED_SELECT and ganador2;
+		--jugador1(1) <= w_LED_SELECT;
+		else
+		led_p2 <= '0';
+end if;	
+	
 end if;
 end process matriz_leds;
 
@@ -144,25 +205,74 @@ process(turno) --selector de turnos
         p <= ot;
 end process;
 
+process(jugador1) --compuertas AND con las 8 combinaciones posibles para ganar del jugador 1
+    begin
+        ganador1 <= '0'; 
+        for i in 0 to 2 loop
+            if (jugador1(1+i*3)='1' and jugador1(2+i*3)='1' and jugador1(3+i*3)='1') then --filas
+                ganador1 <= '1';
+            end if;
+            if (jugador1(1+i)='1' and jugador1(4+i)='1' and jugador1(7+i)='1') then --columnas
+                ganador1 <= '1';
+            end if;
+        end loop;
+        if (jugador1(1)='1' and jugador1(5)='1' and jugador1(9)='1') or (jugador1(3)='1' and jugador1(7)='1' and jugador1(5)='1') then --diagonales
+            ganador1 <= '1';
+        end if;
+end process;
 
-process (conta_tecla) begin
+process(jugador2) --compuertas AND con las 8 combinaciones posibles para ganar del jugador 2
+    begin
+        ganador2 <= '0'; 
+        for i in 0 to 2 loop
+            if (jugador2(1+i*3)='1' and jugador2(2+i*3)='1' and jugador2(3+i*3)='1') then --filas
+                ganador2 <= '1';
+            end if;
+            if (jugador2(1+i)='1' and jugador2(4+i)='1' and jugador2(7+i)='1') then --columnas
+                ganador2 <= '1';
+            end if;
+        end loop;
+        if (jugador2(1)='1' and jugador2(5)='1' and jugador2(9)='1') or (jugador2(3)='1' and jugador2(7)='1' and jugador2(5)='1') then --diagonales
+            ganador2 <= '1';
+        end if;
+end process;
 
-case conta_tecla is
-	when "0000" => DISPLAY <= "1000000";
-	when "0001" => DISPLAY <= "1111001";
-	when "0010" => DISPLAY <= "0100100";
-	when "0011" => DISPLAY <= "0110000";
-	when "0100" => DISPLAY <= "0011001";
-	when "0101" => DISPLAY <= "0010010";
-	when "0110" => DISPLAY <= "0000010";
-	when "0111" => DISPLAY <= "1111000";
-	when "1000" => DISPLAY <= "0000000";
-	when "1001" => DISPLAY <= "0010000";
-	when others => DISPLAY <= "1000000";
-end case;
-end process;	
+--process(ganador1,ganador2) --selector de turnos
+--begin
+--if rising_edge(CLK) then
+--	
+--end if;
+--end process;
 
+--process (conta_tecla) begin
+--
+--case conta_tecla is
+--	when "0000" => DISPLAY <= "1000000";
+--	when "0001" => DISPLAY <= "1111001";
+--	when "0010" => DISPLAY <= "0100100";
+--	when "0011" => DISPLAY <= "0110000";
+--	when "0100" => DISPLAY <= "0011001";
+--	when "0101" => DISPLAY <= "0010010";
+--	when "0110" => DISPLAY <= "0000010";
+--	when "0111" => DISPLAY <= "1111000";
+--	when "1000" => DISPLAY <= "0000000";
+--	when "1001" => DISPLAY <= "0010000";
+--	when others => DISPLAY <= "1000000";
+--end case;
+--end process;	
 
-
+p_1_HZ : process (CLK) is
+  begin
+    if rising_edge(CLK) then
+      if r_CNT_1HZ = c_CNT_1HZ-1 then  -- -1, since counter starts at 0
+        r_TOGGLE_1HZ <= not r_TOGGLE_1HZ;
+        r_CNT_1HZ    <= 0;
+      else
+        r_CNT_1HZ <= r_CNT_1HZ + 1;
+      end if;
+    end if;
+  end process p_1_HZ;
+	
+w_LED_SELECT <=  r_TOGGLE_1HZ;	
+	
 end Behavioral;
-
