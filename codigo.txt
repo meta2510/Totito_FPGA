@@ -81,8 +81,6 @@ Enable1 <= '1';
 Enable2 <= '1';
 ganador <= ganador1 or ganador2;
 
-
-
 u1 : LIB_TEC_MATRICIAL_4X4_INTESC_REVA
 generic map( FREQ_CLK => 12_000_000
            )
@@ -93,7 +91,6 @@ port map( CLK        => CLK,
           IND        => ind
 			);
 			
-	
 PROCESS(CLK,boton1,start)
 BEGIN
 	IF RISING_EDGE(CLK) THEN
@@ -113,7 +110,6 @@ BEGIN
 	end if;	
 	END IF;
 END PROCESS;
-
 
 matriz_leds: process(CLK,cambio)
 begin
@@ -157,8 +153,6 @@ if ganador1 = '1' then
 		jugador2(i) <= '0';
 		end if;
 		end loop;
-		--led_p1 <= w_LED_SELECT and ganador1;
-		--jugador1(1) <= w_LED_SELECT;
 		else
 		led_p1 <= '0';
 end if;
@@ -170,8 +164,6 @@ if ganador2 = '1' then
 		jugador1(i) <= '0';
 		end if;
 		end loop;
-		--led_p2 <= w_LED_SELECT and ganador2;
-		--jugador1(1) <= w_LED_SELECT;
 		else
 		led_p2 <= '0';
 end if;	
@@ -222,4 +214,6 @@ process(jugador2) --compuertas AND con las 8 combinaciones posibles para ganar d
 end process;
 	
 end Behavioral;
+
+
 
